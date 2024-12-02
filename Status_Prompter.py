@@ -9,7 +9,7 @@ from subprocess import check_output  # 导入check_output函数用于执行外�
 
 # 定义一个Light类，用于表示一个灯光（图形界面元素）
 class Light():
-    def __init__(self, color: str, location: str, size: str = '4x4'):
+    def __init__(self, color: str, location: str, size: str = '40x40'):
         # 初始化Tkinter窗口，并设置窗口的各种属性（颜色、位置、大小、透明度等）
         self.root = Tk()
         self.root.withdraw()  # 隐藏窗口
@@ -19,7 +19,7 @@ class Light():
         self.root.resizable(False, False)  # 禁止调整窗口大小
         self.root.configure(bg=color)  # 设置窗口背景颜色
         self.root.geometry(size + '+' + location)  # 设置窗口大小和位置
-        self.root.attributes("-alpha", 1)  # 设置窗口透明度为1（不透明）
+        self.root.attributes("-alpha", 0.8)  # 设置窗口透明度为80%
 
     def on(self):
         self.root.deiconify()  # 显示窗口
@@ -45,12 +45,12 @@ def check_process_and_light(process_name: str, state: list, light: Light):
             light.off()
             state[0] = False
 
-# 判断以太网流量是否低于阈值的函数
-def low_ethernet_traffic():
-    sent_before = net_io_counters().bytes_sent  # 记录发送前的字节数
-    sleep(1)  # 延迟1秒
-    sent_now = net_io_counters().bytes_sent  # 记录发送后的字节数
-    return (sent_now - sent_before) <= 102400  # 判断发送的字节数是否低于100KB
+# 判断网络上行流量是否低于阈值的函数
+def low_Ethernet_traffic():
+    sent_before = net_io_counters().bytes_sent  # 已发送的流量
+    sleep(1)  # 暂停1秒
+    sent_now = net_io_counters().bytes_sent
+    return True if (sent_now - sent_before)<= 102400 else False  # 算出1秒后的差值并判断(单位:Byte) 当前阈值：100KB
 
 # 调整音量并播放声音的函数
 def adjust_volume_and_play_sound(file_path: str):
@@ -90,19 +90,19 @@ while True:
     check_process_and_light('rtcRemoteDesktop.exe', [state_lights[1]], L2)
 
     # 检查网络流量
-    if low_ethernet_traffic():
+    if low_Ethernet_traffic():  # 如果网络流量低
         if any(state_lights[1:]):  # 如果任何监控进程正在运行
-            if not state_lights[0]:
-                L1.on()
-                state_lights[0] = True
+            if not state_lights[0]:  # 如果无灯亮起
+                L1.on()  # 亮起灯1
+                state_lights[0] = True  # 更新状态：网络流量低状态灯亮起
         else:
-            if state_lights[0]:
-                L1.off()
-                state_lights[0] = False
+            if state_lights[0]:  # 如果网络流量低状态登亮起
+                L1.off()  # 熄灭灯1
+                state_lights[0] = False  # 更新状态：网络流量低状态灯关闭
     else:
-        if state_lights[0]:
-            L1.off()
-            state_lights[0] = False
+        if state_lights[0]:  # 如果网络流量低状态登亮起
+            L1.off()  # 熄灭灯1
+            state_lights[0] = False  # 更新状态：网络流量低状态灯关闭
 
     # 检查media_capture.exe并调整音量/播放声音
     try:
@@ -112,7 +112,7 @@ while True:
         continue
 
     if media_capture_running:
-        if not low_ethernet_traffic():  # 仅在网络流量不低时调整
+        if not low_Ethernet_traffic():  # 仅在网络流量不低时调整
             if not state_media:
                 adjust_volume_and_play_sound("C:\\Windows\\Media\\Speech On.wav")
                 state_media = True
@@ -122,7 +122,7 @@ while True:
             state_media = False
 
     # 如果网络流量持续低，则尝试终止相关进程
-    if low_ethernet_traffic():
+    if low_Ethernet_traffic():
         count = 0
         while True:
             try:
